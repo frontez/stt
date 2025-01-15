@@ -1,0 +1,6 @@
+flask>=1.0
+numpy<2
+torch
+openai-whisper
+ffmpeg
+ffmpeg-python
