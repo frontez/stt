@@ -10,8 +10,9 @@
     </style>
 </head>
 <body>
-
     <h1>Speech Recognition</h1>
+    <label for="audioSource">Select Audio Source:</label>
+    <select id="audioSource"></select>
     <button id="startButton">Start Recording</button>
     <button id="stopButton" disabled>Stop Recording</button>
 
@@ -22,18 +23,40 @@
         const startButton = document.getElementById('startButton');
         const stopButton = document.getElementById('stopButton');
         const output = document.getElementById('output');
+        const audioSource = document.getElementById('audioSource');
         let mediaRecorder;
         let audioChunks = [];
-    
+
+        // Function to populate audio input device list
+        async function getAudioDevices() {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const audioDevices = devices.filter(device => device.kind === 'audioinput');
+            audioDevices.forEach(device => {
+                const option = document.createElement('option');
+                option.value = device.deviceId;
+                option.text = device.label || `Microphone ${audioSource.length + 1}`;
+                audioSource.appendChild(option);
+            });
+        }
+
+        // Call this function to populate the dropdown on page load
+        getAudioDevices();
+
         startButton.addEventListener('click', async () => {
             audioChunks = [];
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const selectedDeviceId = audioSource.value;
+            console.log("Selected Device ID:", selectedDeviceId);
+            
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: { deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined }
+            });
             mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-    
+
             mediaRecorder.addEventListener('dataavailable', event => {
+                console.log('data available: ', event.data);
                 audioChunks.push(event.data);
             });
-    
+
             mediaRecorder.addEventListener('stop', async () => {
                 const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
                 const arrayBuffer = await audioBlob.arrayBuffer();
@@ -43,22 +66,21 @@
                     headers: { 'Content-Type': 'application/octet-stream' },
                     body: arrayBuffer
                 });
-    
+
                 const data = await response.json();
                 output.value = data.text || data.error;
             });
-    
+
             mediaRecorder.start();
             startButton.disabled = true;
             stopButton.disabled = false;
         });
-    
+
         stopButton.addEventListener('click', () => {
             mediaRecorder.stop();
             startButton.disabled = false;
             stopButton.disabled = true;
         });
     </script>
-
 </body>
 </html>
